@@ -11,9 +11,11 @@ public interface CVal {
 	int DEFAULT_PORT = 8899;
 	String CONFIG = "config";
 	interface PREF {
-		String USE_SYS_PLAYER = "usesysplayer";
-		String USE_MULTICAST = "use_multicast";
-		String PORT = "port";
-		String IP 	= "ip";
+		String USE_SYS_PLAYER 	= "usesysplayer";
+		String USE_MULTICAST 	= "use_multicast";
+		String PORT 			= "port";
+		String TvIP 			= "tvip";
+		String EnableTv 		= "enabletv";
+		String EnablePhone 		= "enablephone";
 	}
 }

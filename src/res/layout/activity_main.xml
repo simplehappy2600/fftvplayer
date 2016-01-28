@@ -7,62 +7,64 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     android:orientation="vertical" >
-
-	<TextView 
-        android:id="@+id/tvInfo"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="" />
-
-	<CheckBox
-	    android:id="@+id/cbUseMulticast"
-	    android:layout_width="wrap_content"
-	    android:layout_height="wrap_content"
-	    android:checked="true"
-	    android:text="使用组播" />	
-	<CheckBox
-	    android:id="@+id/cbUseSysPlayer"
-	    android:layout_width="wrap_content"
-	    android:layout_height="wrap_content"
-	    android:checked="true"
-	    android:text="使用系统播放器" />
-        
-    <EditText
+			    
+    <RadioGroup android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+		<RadioButton android:id="@+id/cbUseMulticast" android:layout_width="wrap_content" android:layout_height="wrap_content"
+			android:textAppearance="@android:style/TextAppearance.Medium"
+			android:checked="true"
+	    	android:text="组播" />    
+		<RadioButton android:id="@+id/cbUseHttp" android:layout_width="wrap_content" android:layout_height="wrap_content"
+			android:textAppearance="@android:style/TextAppearance.Medium"
+	    	android:text="HTTP" />
+    </RadioGroup>
+    
+	<EditText
         android:id="@+id/etPortTv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="8899"
-        android:ems="10" />
+        android:textAppearance="@android:style/TextAppearance.Large"
+        android:text="8899" />
+    
+    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="?android:attr/listDivider" />
+    
+    <RadioGroup android:layout_width="match_parent" android:layout_height="wrap_content">
+        
+		<RadioButton android:id="@+id/cbTv" android:layout_width="wrap_content" android:layout_height="wrap_content"
+			android:textAppearance="@android:style/TextAppearance.Medium"
+			android:checked="true"
+	    	android:text="电视" />
+		
+		<CheckBox android:id="@+id/cbUseSysPlayer" android:layout_width="wrap_content" android:layout_height="wrap_content"
+	    	android:checked="false"
+	    	android:textAppearance="@android:style/TextAppearance.Large"
+	    	android:text="使用系统播放器" />
+		
+		<View android:layout_width="match_parent" android:layout_height="2dp" android:background="?android:attr/listDivider" />		
+		
+		<RadioButton android:id="@+id/cbPhone" android:layout_width="wrap_content" android:layout_height="wrap_content"
+			android:textAppearance="@android:style/TextAppearance.Large"
+	    	android:text="手机" />
+		
+		<EditText android:id="@+id/etIPTv" android:layout_width="wrap_content" android:layout_height="wrap_content"
+		    android:textAppearance="@android:style/TextAppearance.Large"
+        	android:text="127.0.0.1" />
+        
+    </RadioGroup>
 
     <Button
-        android:id="@+id/btnSaveTv"
+        android:id="@+id/btnSave"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="保存电视设置" >
+        android:textAppearance="@android:style/TextAppearance.Large"
+        android:text="保存设置" >
         <requestFocus />
         </Button>
 
-    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="?android:attr/listDivider" />
-    
     <EditText
-        android:id="@+id/etIPTv"
-        android:layout_width="wrap_content"
+        android:id="@+id/etLog"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="127.0.0.1"
-        android:ems="10" />
-	
-    <Button
-        android:id="@+id/btnSavePhone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="保存手机设置" />
-
-    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="?android:attr/listDivider" />
-
-        <Button
-        android:id="@+id/btnTest"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="test" />
+        android:ems="10"
+        android:inputType="textMultiLine" />
         
 </LinearLayout>

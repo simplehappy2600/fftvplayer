@@ -37,14 +37,17 @@ public class DataSourceBroadcastReceiver extends BroadcastReceiver {
 		SharedPreferences sharedPreferences = context.getSharedPreferences(CVal.CONFIG, 0) ;
 		mPort = sharedPreferences.getInt(CVal.PREF.PORT, CVal.DEFAULT_PORT);
 		if (sharedPreferences.getBoolean(CVal.PREF.USE_MULTICAST, false)){
-			multicast(intent);
+			multicast(context, intent);
 		} else {
 			http(context, sharedPreferences, intent);
 		}
 	}
 	
 	private void http(Context context, SharedPreferences sharedPreferences, Intent intent){
-		String ip = sharedPreferences.getString(CVal.PREF.IP, "");
+		
+		Utils.sendMsg(context, "recv play, send http");
+		
+		String ip = sharedPreferences.getString(CVal.PREF.TvIP, "");
 		if (ip.length() == 0){
 			Toast.makeText(context, "tv ip not set", Toast.LENGTH_SHORT).show();
 			return;
@@ -77,7 +80,10 @@ public class DataSourceBroadcastReceiver extends BroadcastReceiver {
 		});	
 	}
 	
-	private void multicast(Intent intent){
+	private void multicast(Context context, Intent intent){
+		
+		Utils.sendMsg(context, "recv play, send multicast");
+		
 		HashMap<String, Object> map = new HashMap<String, Object>();
 		map.put(CVal.KEY_PATH, intent.getStringExtra(CVal.KEY_PATH));
 		map.put(CVal.KEY_KEYS, intent.getStringArrayExtra(CVal.KEY_KEYS));

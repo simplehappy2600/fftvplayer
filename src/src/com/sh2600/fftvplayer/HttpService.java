@@ -30,14 +30,13 @@ import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
 import com.koushikdutta.async.http.server.HttpServerRequestCallback;
 
-public class HttpService extends Service implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class HttpService extends Service {
 	
 	final static String TAG = HttpService.class.getSimpleName();
 	
 	interface MSG {
 		int InitHttp		= 1;
 		int InitMulticast	= 2;
-		
 	}
 
 	private SharedPreferences mSharedPreferences;
@@ -48,6 +47,7 @@ public class HttpService extends Service implements SharedPreferences.OnSharedPr
 	private boolean use_sys_player;
 	private Looper mServiceLooper;
 	private ServiceHandler mServiceHandler;
+	private boolean run = true;
 
 	private final class ServiceHandler extends Handler {
 		public ServiceHandler(Looper looper) {
@@ -74,7 +74,6 @@ public class HttpService extends Service implements SharedPreferences.OnSharedPr
 	public void onCreate() {
 		
 		mSharedPreferences = getSharedPreferences(CVal.CONFIG, 0);
-		mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
 		
 		mPort = mSharedPreferences.getInt(CVal.PREF.PORT, CVal.DEFAULT_PORT);
 		use_sys_player = mSharedPreferences.getBoolean(CVal.PREF.USE_SYS_PLAYER, false);
@@ -93,27 +92,42 @@ public class HttpService extends Service implements SharedPreferences.OnSharedPr
 	}
 	
 	private void initHttp(){
-		mServer = new AsyncHttpServer();
-		mServer.post("/", new HttpServerRequestCallback() {
-		    @Override
-		    public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
-		    	Log.i(TAG, "recv play request data");
-		    	JSONObjectBody body = (JSONObjectBody)request.getBody();
-		    	JSONObject json = body.get();
-		    	Bundle bundle = new Bundle();
-		    	
-    			bundle.putString(CVal.KEY_PATH, json.optString(CVal.KEY_PATH));
-				bundle.putStringArray(CVal.KEY_KEYS, (String[])json.opt(CVal.KEY_KEYS));
-		    	bundle.putStringArray(CVal.KEY_VALUES, (String[])json.opt(CVal.KEY_VALUES));
-		    	bundle.putStringArray(CVal.KEY_SEGMENTS, (String[])json.opt(CVal.KEY_SEGMENTS));
-		    	bundle.putString(CVal.KEY_CACHEDIR, json.optString(CVal.KEY_CACHEDIR));					
-		    	
-		        response.send("OK");
-		        play(bundle);
-		    }
-		});
+		if (!run){
+			return;
+		}
+		
+		Utils.sendMsg(this, "init Http server start...");
+		
+		try{
+			mServer = new AsyncHttpServer();
+			mServer.post("/", new HttpServerRequestCallback() {
+			    @Override
+			    public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+			    	Log.i(TAG, "recv play request data");
+			    	JSONObjectBody body = (JSONObjectBody)request.getBody();
+			    	JSONObject json = body.get();
+			    	Bundle bundle = new Bundle();
+			    	
+	    			bundle.putString(CVal.KEY_PATH, json.optString(CVal.KEY_PATH));
+					bundle.putStringArray(CVal.KEY_KEYS, (String[])json.opt(CVal.KEY_KEYS));
+			    	bundle.putStringArray(CVal.KEY_VALUES, (String[])json.opt(CVal.KEY_VALUES));
+			    	bundle.putStringArray(CVal.KEY_SEGMENTS, (String[])json.opt(CVal.KEY_SEGMENTS));
+			    	bundle.putString(CVal.KEY_CACHEDIR, json.optString(CVal.KEY_CACHEDIR));					
+			    	
+			        response.send("OK");
+			        play(bundle);
+			    }
+			});
 
-		mServer.listen(mPort);
+			mServer.listen(mPort);	
+			
+			Utils.sendMsg(this, "init Http server done");
+		}
+		catch(Exception e){
+			Utils.sendMsg(this, "init Http server error, try later...");
+			mServiceHandler.sendEmptyMessageDelayed(MSG.InitHttp, 500);	
+		}
+
 	}
 	
 	private void play(Bundle bundle){
@@ -128,7 +142,6 @@ public class HttpService extends Service implements SharedPreferences.OnSharedPr
 		        startActivity(intent);   		       
 	        } 	
         } else {
-        	//String path = "http://vplay.aixifan.com/des/20151221/3005289_mp4/3005289_480p.mp4?k=e1fb720dd1d9742a0bc309f0114e7d98&t=1450920450";
         	String path = bundle.getString(CVal.KEY_PATH);
         	Log.i(TAG, "start local player");
 	        Intent intent = new Intent(HttpService.this, PlayerActivity.class);
@@ -140,64 +153,84 @@ public class HttpService extends Service implements SharedPreferences.OnSharedPr
 	}
 	
 	private void initMulticast(){
-		try {
+		if (!run){
+			return;
+		}
+		
+		Utils.sendMsg(this, "init multicast receiver start...");
+		
+		try{
 			group = InetAddress.getByName("228.5.6.7");
+			//TODO exception
 			socket = new MulticastSocket(mPort);
 			socket.joinGroup(group);
 			
-			byte[] buf = new byte[64*1024];
-			int pos = 0;
-			ByteBuffer bb = ByteBuffer.wrap(buf);
-			
-			while(true){
-				try{
-					if (socket.isClosed()){
-						return;
-					}
-					DatagramPacket pkg = new DatagramPacket(buf, pos, buf.length - pos);
-					socket.receive(pkg);
-					pos += pkg.getLength();
-					
-					bb.position(0);
-					int len = bb.getInt();
-					if (pos >= len){
-						//
-						ByteArrayInputStream bs = new ByteArrayInputStream(buf, 4, len - 4);
-						ObjectInputStream ois = new ObjectInputStream(bs);
-						Object o = ois.readObject();
-						HashMap<String, Object> map = (HashMap<String, Object>)o;
-						
-				    	Bundle bundle = new Bundle();
-				    	
-		    			bundle.putString(CVal.KEY_PATH, (String)map.get(CVal.KEY_PATH));
-						bundle.putStringArray(CVal.KEY_KEYS, (String[])map.get(CVal.KEY_KEYS));
-				    	bundle.putStringArray(CVal.KEY_VALUES, (String[])map.get(CVal.KEY_VALUES));
-				    	bundle.putStringArray(CVal.KEY_SEGMENTS, (String[])map.get(CVal.KEY_SEGMENTS));
-				    	bundle.putString(CVal.KEY_CACHEDIR, (String)map.get(CVal.KEY_CACHEDIR));	
-				    	
-						play(bundle);
-						
-						if (pos > len){
-							System.arraycopy(buf, len, buf, 0, pos - len);
-						}
-						
-						pos -= len;
-					}	
-				}
-				catch(Exception e){
-					Log.e(TAG, "", e);
-					pos = 0;
-				}
+			Utils.sendMsg(this, "init multicast receiver done");
+		}
+		catch(Exception e){
+			Utils.sendMsg(this, "init multicast receiver error, try later");
+			if (socket != null){
+				socket.close();
 			}
-			
-		} catch (Exception e) {
-			Log.e(TAG, "", e);
-		}		
+			mServiceHandler.sendEmptyMessageDelayed(MSG.InitMulticast, 500);	
+		}
+		
+		recvMulticastLoop();
+	}
+	
+	private void recvMulticastLoop(){
+		
+		Utils.sendMsg(this, "recv Multicast Loop started");
+		
+		byte[] buf = new byte[64*1024];
+		int pos = 0;
+		ByteBuffer bb = ByteBuffer.wrap(buf);
+		
+		while(run){
+			try{
+				if (socket.isClosed()){
+					return;
+				}
+				DatagramPacket pkg = new DatagramPacket(buf, pos, buf.length - pos);
+				socket.receive(pkg);
+				pos += pkg.getLength();
+				
+				bb.position(0);
+				int len = bb.getInt();
+				if (pos >= len){
+					//
+					ByteArrayInputStream bs = new ByteArrayInputStream(buf, 4, len - 4);
+					ObjectInputStream ois = new ObjectInputStream(bs);
+					Object o = ois.readObject();
+					HashMap<String, Object> map = (HashMap<String, Object>)o;
+					
+			    	Bundle bundle = new Bundle();
+			    	
+	    			bundle.putString(CVal.KEY_PATH, (String)map.get(CVal.KEY_PATH));
+					bundle.putStringArray(CVal.KEY_KEYS, (String[])map.get(CVal.KEY_KEYS));
+			    	bundle.putStringArray(CVal.KEY_VALUES, (String[])map.get(CVal.KEY_VALUES));
+			    	bundle.putStringArray(CVal.KEY_SEGMENTS, (String[])map.get(CVal.KEY_SEGMENTS));
+			    	bundle.putString(CVal.KEY_CACHEDIR, (String)map.get(CVal.KEY_CACHEDIR));	
+			    	
+					play(bundle);
+					
+					if (pos > len){
+						System.arraycopy(buf, len, buf, 0, pos - len);
+					}
+					
+					pos -= len;
+				}	
+			}
+			catch(Exception e){
+				Log.e(TAG, "", e);
+				pos = 0;
+			}
+		}
+		Utils.sendMsg(this, "recv Multicast Loop quit");
 	}
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-//		Toast.makeText(this, "service starting", Toast.LENGTH_SHORT).show();
 //		Message msg = mServiceHandler.obtainMessage();
 //		msg.arg1 = startId;
 //		mServiceHandler.sendMessage(msg);
@@ -212,47 +245,19 @@ public class HttpService extends Service implements SharedPreferences.OnSharedPr
 
 	@Override
 	public void onDestroy() {
+		run = false;
 		try {
 			if (mServer != null){
 				mServer.stop();
-				mServer = null;
 			}
 			if (socket != null){
 				socket.leaveGroup(group);
 				socket.close();
-				socket = null;
 			}			
 		} catch (IOException e) {
 			Log.e(TAG, "", e);
 		}
-		//mServiceHandler.sendEmptyMessage(MSG.QUIT);
-		mSharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
 		mServiceLooper.quit();
 	}
 
-	@Override
-	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-		if (CVal.PREF.PORT.equalsIgnoreCase(key)){
-			mPort = sharedPreferences.getInt(CVal.PREF.PORT, 8899);
-			//mServiceHandler.sendEmptyMessage(MSG.RESTART);
-			try {
-				if (mServer != null){
-					mServer.stop();
-					mServer.listen(mPort);
-				}
-				if (socket != null){
-					socket.leaveGroup(group);
-					socket.close();
-					socket = null;
-					mServiceHandler.sendEmptyMessageDelayed(MSG.InitMulticast, 600);
-				}			
-			} catch (IOException e) {
-				Log.e(TAG, "", e);
-			}	
-		}
-		
-		if (CVal.PREF.USE_SYS_PLAYER.equalsIgnoreCase(key)){
-			use_sys_player = sharedPreferences.getBoolean(CVal.PREF.USE_SYS_PLAYER, true);
-		}
-	}
 }
